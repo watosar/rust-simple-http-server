@@ -74,7 +74,9 @@ fn main() {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         pool.execute(|| {
-            handle_connection(stream);
+            if let Err(msg) = handle_connection(stream) {
+                error!("{msg}");
+            };
         });
     }
     // 閉じます
@@ -171,10 +173,9 @@ fn read_full_header(stream: &mut TcpStream) -> Option<Vec<u8>> {
     Some(buffer)
 }
 
-fn discard_header(stream: &mut TcpStream) {
+fn discard_header(stream: &mut TcpStream) -> Result<(), String> {
     if let Err(msg) = stream.set_nonblocking(true) {
-        error!("{msg}");
-        return;
+        return Err(format!("{msg}"));
     }
 
     let mut probe = [0; 1024];
@@ -189,31 +190,32 @@ fn discard_header(stream: &mut TcpStream) {
                 break;
             }
             Err(e) => {
-                error!("{e}");
-                return;
+                return Err(format!("{e}"));
             }
         };
     }
 
     if let Err(msg) = stream.set_nonblocking(false) {
-        error!("{msg}");
+        return Err(format!("{msg}"));
     }
+
+    Ok(())
 }
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(mut stream: TcpStream) -> Result<String, String> {
     info!("handle connection start.");
     info!("connection from: {}", stream.peer_addr().unwrap());
     let opt_buffer = read_full_header(&mut stream);
     if opt_buffer.is_none() {
-        return;
+        return Err("unexpected EOF.".to_string());
     }
     let buffer = opt_buffer.unwrap();
-    info!(
-        "request header: {}",
-        String::from_utf8(buffer.to_vec()).unwrap()
-    );
+    match String::from_utf8(buffer.to_vec()) {
+        Ok(content) => info!("request header: {}", content),
+        Err(err) => return Err(err.to_string()),
+    }
 
-    discard_header(&mut stream);
+    discard_header(&mut stream)?;
 
     let (http_status, filename) = if buffer.starts_with("GET /".as_bytes()) {
         match parse_endpoint("GET", HTTP_VERSION, &buffer) {
@@ -247,7 +249,11 @@ fn handle_connection(mut stream: TcpStream) {
         (http_status, filepath)
     };
 
-    let mut file = File::open(filepath.clone()).unwrap();
+    let file = File::open(filepath.clone());
+    if file.is_err() {
+        return Err(file.err().unwrap().to_string());
+    }
+    let mut file = file.unwrap();
     write_header(
         &mut stream,
         http_status,
@@ -255,6 +261,12 @@ fn handle_connection(mut stream: TcpStream) {
             .get(&filepath.extension().and_then(OsStr::to_str).unwrap_or(""))
             .unwrap_or(&""),
     );
-    std::io::copy(&mut file, &mut stream).unwrap();
-    stream.flush().unwrap();
+    if let Err(err) = std::io::copy(&mut file, &mut stream) {
+        return Err(err.to_string());
+    };
+    if let Err(err) = stream.flush() {
+        return Err(err.to_string());
+    };
+
+    Ok(http_status.to_string())
 }
