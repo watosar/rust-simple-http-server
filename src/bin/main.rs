@@ -1,18 +1,18 @@
-use hello_ws::lib_server_impl::handle_connection;
-use hello_ws::lib_thread_pool::ThreadPool;
 use log::{error, info, warn};
 use regex::Regex;
+use simple_http_server::lib_server_impl::handle_connection;
+use simple_http_server::lib_thread_pool::ThreadPool;
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::PathBuf;
 
-static CONFIG_PATTERN: &str = r"config\s+myservice\s+'main'
+static CONFIG_PATTERN: &str = r"config\s+simple-http-server\s+'main'
 \s+list\s+listen_http\s'(?<addr>\d+\.\d+\.\d+.\d:\d+)'
 (?:\s+option\shome\s'(?<home>.+?)')?";
 fn get_config() -> (String, PathBuf) {
-    let conf_file_path = "/etc/config/myservice";
+    let conf_file_path = "/etc/config/simple-http-server";
     let default_listen = "0.0.0.0:8000";
     let default_home = "/var/www";
 
