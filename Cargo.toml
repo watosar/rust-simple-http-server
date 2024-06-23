@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "shs"
+name = "rust-simple-http-server"
 path = "src/bin/main.rs"
 
 [dependencies]

@@ -1,0 +1,3 @@
+config rust-simple-http-server 'main'
+        list listen_http '10.21.0.1:80'
+        option home '/var/www/html'

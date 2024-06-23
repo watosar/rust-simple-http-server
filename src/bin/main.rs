@@ -8,11 +8,11 @@ use std::io::Read;
 use std::net::TcpListener;
 use std::path::PathBuf;
 
-static CONFIG_PATTERN: &str = r"config\s+simple-http-server\s+'main'
+static CONFIG_PATTERN: &str = r"config\s+rust-simple-http-server\s+'main'
 \s+list\s+listen_http\s'(?<addr>\d+\.\d+\.\d+.\d:\d+)'
 (?:\s+option\shome\s'(?<home>.+?)')?";
 fn get_config() -> (String, PathBuf) {
-    let conf_file_path = "/etc/config/simple-http-server";
+    let conf_file_path = "/etc/config/rust-simple-http-server";
     let default_listen = "0.0.0.0:8000";
     let default_home = "/var/www";
 
